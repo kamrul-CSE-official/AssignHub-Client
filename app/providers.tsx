@@ -1,11 +1,12 @@
 import React from "react";
 import { Toaster } from "sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
     <div>
       <Toaster />
-      {children}
+      <TooltipProvider>{children}</TooltipProvider>
     </div>
   );
 };
