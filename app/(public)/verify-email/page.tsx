@@ -1,16 +1,16 @@
-import React from "react";
+import { Suspense } from "react";
+import VerifyEmailForm from "./_components/verifyEmailForm";
 
-const VerifyEmail = () => {
+export default function VerifyEmailPage() {
   return (
-    <div>
-      <p>
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime
-        consequuntur cupiditate quod architecto, doloribus minima quis harum,
-        pariatur in laboriosam esse fuga dolor? Facilis dignissimos, libero
-        quibusdam exercitationem blanditiis molestiae!
-      </p>
-    </div>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <VerifyEmailForm />
+    </Suspense>
   );
-};
-
-export default VerifyEmail;
+}
