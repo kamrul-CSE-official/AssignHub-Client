@@ -1,3 +1,5 @@
+"use client";
+
 import { loginSchema, LoginValues } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -20,18 +22,26 @@ import {
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
+import { signIn } from "@/apiService/user/auth"; // Adjust import path if needed
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
+interface LoginDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSwitchToRegister: () => void;
+}
 
 function LoginDialog({
   open,
   onOpenChange,
   onSwitchToRegister,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSwitchToRegister: () => void;
-}) {
+}: LoginDialogProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const router = useRouter();
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -39,31 +49,53 @@ function LoginDialog({
     mode: "onBlur",
   });
 
-  async function onSubmit(values: LoginValues) {
-    setServerError(null);
-    try {
-      // TODO: replace with real auth call
-      // await signIn("credentials", { ...values, redirect: false });
-      await new Promise((r) => setTimeout(r, 900));
+  const signInMutation = useMutation({
+    mutationFn: signIn,
+
+    onSuccess: async () => {
+      toast.success("Signed in successfully!");
 
       form.reset();
       onOpenChange(false);
-    } catch {
-      setServerError("Invalid email or password.");
+
+      // Refresh the Better Auth session state
+      await queryClient.invalidateQueries({
+        queryKey: ["auth"],
+      });
+
+      // router.replace("/dashboard");
+      window.location.assign("/dashboard");
+
+      router.refresh();
+    },
+
+    onError: (err: Error) => {
+      form.setError("root", {
+        message: err.message || "Invalid email or password.",
+      });
+
+      toast.error(err.message || "Sign in failed. Please try again.");
+    },
+  });
+
+  function onSubmit(values: LoginValues) {
+    form.clearErrors("root");
+    signInMutation.mutate(values);
+  }
+
+  function handleOpenChange(newOpen: boolean) {
+    onOpenChange(newOpen);
+    if (!newOpen) {
+      form.reset();
+      form.clearErrors("root");
     }
   }
 
+  const serverError = form.formState.errors.root?.message;
+  const isSubmitting = signInMutation.isPending;
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        onOpenChange(o);
-        if (!o) {
-          form.reset();
-          setServerError(null);
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Welcome back</DialogTitle>
@@ -78,6 +110,7 @@ function LoginDialog({
             className="space-y-4 pt-2"
             noValidate
           >
+            {/* Email Field */}
             <FormField
               control={form.control}
               name="email"
@@ -89,6 +122,7 @@ function LoginDialog({
                       type="email"
                       placeholder="you@school.edu"
                       autoComplete="email"
+                      disabled={isSubmitting}
                       {...field}
                     />
                   </FormControl>
@@ -97,6 +131,7 @@ function LoginDialog({
               )}
             />
 
+            {/* Password Field */}
             <FormField
               control={form.control}
               name="password"
@@ -119,6 +154,7 @@ function LoginDialog({
                         placeholder="••••••••"
                         autoComplete="current-password"
                         className="pr-10"
+                        disabled={isSubmitting}
                         {...field}
                       />
                       <button
@@ -142,21 +178,20 @@ function LoginDialog({
               )}
             />
 
+            {/* Root / Server Error Message */}
             {serverError && (
               <p className="text-sm text-destructive">{serverError}</p>
             )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={form.formState.isSubmitting}
-            >
-              {form.formState.isSubmitting && (
+            {/* Submit Button */}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Sign in
+              {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
 
+            {/* Switch to Register */}
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
               <button

@@ -12,7 +12,7 @@ export const registerSchema = z.object({
     .min(8, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Must include an uppercase letter")
     .regex(/[0-9]/, "Must include a number"),
-  role: z.enum(["teacher", "student"]),
+  role: z.enum(["TEACHER", "STUDENT"]),
 });
 
 export type RegisterValues = z.infer<typeof registerSchema>;

@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  registerSchema,
-  RegisterValues,
-} from "@/lib/validations/auth";
+import { registerSchema, RegisterValues } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -51,7 +48,7 @@ function RegisterDialog({
       email: "",
       phone: "",
       password: "",
-      role: "teacher",
+      role: "TEACHER",
     },
     mode: "onBlur",
   });
@@ -76,13 +73,11 @@ function RegisterDialog({
     },
   });
 
-  // ✅ Real submit — calls the mutation
   function onSubmit(values: RegisterValues) {
     form.clearErrors("root");
     signUpMutation.mutate(values);
   }
 
-  // ✅ Reset form when dialog closes
   function handleOpenChange(newOpen: boolean) {
     onOpenChange(newOpen);
     if (!newOpen) {
@@ -117,7 +112,7 @@ function RegisterDialog({
                 <FormItem>
                   <FormLabel>I am a…</FormLabel>
                   <div className="grid grid-cols-2 gap-2">
-                    {(["teacher", "student"] as const).map((r) => (
+                    {(["TEACHER", "STUDENT"] as const).map((r) => (
                       <button
                         key={r}
                         type="button"

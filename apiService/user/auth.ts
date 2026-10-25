@@ -20,36 +20,53 @@ export interface SignUpResponse {
   };
 }
 
-export const signUp = async (
-  payload: SignUpPayload,
-): Promise<SignUpResponse> => {
+export const signUp = async (payload: SignUpPayload) => {
+  const name = payload.name?.trim();
+
   const body = {
     ...payload,
-    name: payload?.name?.trim(),
-    image:
-      payload.image ??
-      `https://avatar.vercel.sh/${payload.name}?text=${payload.name?.charAt(0) ?? ""}`,
+    name,
+    // image:
+    //   payload.image ??
+    //   `https://avatar.vercel.sh/${name?.charAt(3)}?text=${name?.charAt(0) ?? ""}`,
   };
 
-  const response = await fetch(
-    `${envConfig.baseServerApi}/api/users/register`,
-    {
+  let response: Response;
+
+  try {
+    response = await fetch(`${envConfig.baseServerApi}/users/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       credentials: "include",
       body: JSON.stringify(body),
-    },
-  );
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(data?.message || "Signup failed");
+    });
+  } catch (error) {
+    console.error("Signup network error:", error);
+    throw new Error(
+      "Cannot connect to the server. Check the API URL and CORS configuration.",
+    );
   }
 
-  return data as SignUpResponse;
+  const contentType = response.headers.get("content-type");
+
+  const data = contentType?.includes("application/json")
+    ? await response.json().catch(() => null)
+    : await response.text().catch(() => "");
+
+  if (!response.ok) {
+    const message =
+      typeof data === "object" && data !== null
+        ? data.message || data.error
+        : typeof data === "string" && data
+          ? data
+          : `Signup failed (${response.status})`;
+
+    throw new Error(message);
+  }
+
+  return data;
 };
 
 // Login API
