@@ -1,6 +1,6 @@
+"use client";
+
 import {
-  loginSchema,
-  LoginValues,
   registerSchema,
   RegisterValues,
 } from "@/lib/validations/auth";
@@ -26,55 +26,75 @@ import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import Link from "next/link";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { signUp } from "@/apiService/user/auth";
+import { toast } from "sonner";
+
+interface RegisterDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSwitchToLogin: () => void;
+}
 
 function RegisterDialog({
   open,
   onOpenChange,
   onSwitchToLogin,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSwitchToLogin: () => void;
-}) {
+}: RegisterDialogProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       name: "",
       email: "",
+      phone: "",
       password: "",
       role: "teacher",
     },
     mode: "onBlur",
   });
 
-  async function onSubmit(values: RegisterValues) {
-    setServerError(null);
-    try {
-      // TODO: replace with real registration call
-      // await fetch("/api/auth/register", { ...values })
-      await new Promise((r) => setTimeout(r, 900));
-
+  const signUpMutation = useMutation({
+    mutationFn: signUp,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      toast.success(
+        data.message ??
+          "Registration successful! Please check your email to verify your account.",
+      );
       form.reset();
       onOpenChange(false);
-    } catch {
-      setServerError("Something went wrong. Please try again.");
+      onSwitchToLogin();
+    },
+    onError: (err: Error) => {
+      form.setError("root", {
+        message: err.message || "Signup failed. Please try again.",
+      });
+      toast.error(err.message || "Signup failed. Please try again.");
+    },
+  });
+
+  // ✅ Real submit — calls the mutation
+  function onSubmit(values: RegisterValues) {
+    form.clearErrors("root");
+    signUpMutation.mutate(values);
+  }
+
+  // ✅ Reset form when dialog closes
+  function handleOpenChange(newOpen: boolean) {
+    onOpenChange(newOpen);
+    if (!newOpen) {
+      form.reset();
     }
   }
 
+  const serverError = form.formState.errors.root?.message;
+  const isSubmitting = signUpMutation.isPending;
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        onOpenChange(o);
-        if (!o) {
-          form.reset();
-          setServerError(null);
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create your account</DialogTitle>
@@ -102,6 +122,7 @@ function RegisterDialog({
                         key={r}
                         type="button"
                         onClick={() => field.onChange(r)}
+                        disabled={isSubmitting}
                         className={`rounded-md border px-3 py-2 text-sm font-medium capitalize transition-colors ${
                           field.value === r
                             ? "border-primary bg-primary/10 text-primary"
@@ -117,6 +138,7 @@ function RegisterDialog({
               )}
             />
 
+            {/* Name */}
             <FormField
               control={form.control}
               name="name"
@@ -127,6 +149,7 @@ function RegisterDialog({
                     <Input
                       placeholder="Jane Doe"
                       autoComplete="name"
+                      disabled={isSubmitting}
                       {...field}
                     />
                   </FormControl>
@@ -135,6 +158,7 @@ function RegisterDialog({
               )}
             />
 
+            {/* Email */}
             <FormField
               control={form.control}
               name="email"
@@ -146,6 +170,7 @@ function RegisterDialog({
                       type="email"
                       placeholder="you@school.edu"
                       autoComplete="email"
+                      disabled={isSubmitting}
                       {...field}
                     />
                   </FormControl>
@@ -154,6 +179,28 @@ function RegisterDialog({
               )}
             />
 
+            {/* ✅ NEW: Phone field (required by API) */}
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone number</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="+880 1XXX XXXXXX"
+                      autoComplete="tel"
+                      disabled={isSubmitting}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Password */}
             <FormField
               control={form.control}
               name="password"
@@ -167,6 +214,7 @@ function RegisterDialog({
                         placeholder="At least 8 characters"
                         autoComplete="new-password"
                         className="pr-10"
+                        disabled={isSubmitting}
                         {...field}
                       />
                       <button
@@ -190,19 +238,16 @@ function RegisterDialog({
               )}
             />
 
+            {/* Root error */}
             {serverError && (
               <p className="text-sm text-destructive">{serverError}</p>
             )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={form.formState.isSubmitting}
-            >
-              {form.formState.isSubmitting && (
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Create account
+              {isSubmitting ? "Creating account..." : "Create account"}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">

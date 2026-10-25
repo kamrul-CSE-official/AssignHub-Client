@@ -2,13 +2,12 @@ import envConfig from "@/config/env.config";
 
 // Regestation API
 export interface SignUpPayload {
-  f_name: string;
-  l_name: string;
   name?: string;
   image?: string;
   phone: string;
   email: string;
   password: string;
+  role: string;
 }
 
 export interface SignUpResponse {
@@ -26,10 +25,10 @@ export const signUp = async (
 ): Promise<SignUpResponse> => {
   const body = {
     ...payload,
-    name: `${payload.f_name} ${payload.l_name}`.trim(),
+    name: payload?.name?.trim(),
     image:
       payload.image ??
-      `https://avatar.vercel.sh/${payload.f_name}?text=${payload.f_name?.charAt(0) ?? ""}`,
+      `https://avatar.vercel.sh/${payload.name}?text=${payload.name?.charAt(0) ?? ""}`,
   };
 
   const response = await fetch(
